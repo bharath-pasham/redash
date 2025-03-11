@@ -9,14 +9,11 @@ x-redash-service: &redash-service
     - .:/app
   env_file:
     - .env
-  extra_hosts:
-    - "host.docker.internal:host-gateway"
-    - "localhost:host-gateway"
 x-redash-environment: &redash-environment
   REDASH_HOST: http://localhost:5001
-  REDASH_LOG_LEVEL: "DEBUG"
+  REDASH_LOG_LEVEL: "INFO"
   REDASH_REDIS_URL: "redis://redis:6379/0"
-  REDASH_DATABASE_URL: "postgresql://celonis:celonis@host.docker.internal:5432/redash"
+  REDASH_DATABASE_URL: "postgresql://postgres@postgres/postgres"
   REDASH_RATELIMIT_ENABLED: "false"
   REDASH_MAIL_DEFAULT_SENDER: "redash@example.com"
   REDASH_MAIL_SERVER: "email"
@@ -27,8 +24,9 @@ x-redash-environment: &redash-environment
 services:
   server:
     <<: *redash-service
-    command: debug
+    command: dev_server
     depends_on:
+      - postgres
       - redis
     ports:
       - "5001:5000"
@@ -36,11 +34,6 @@ services:
     environment:
       <<: *redash-environment
       PYTHONUNBUFFERED: 0
-    healthcheck:
-      test: ["CMD", "pg_isready", "-h", "host.docker.internal", "-p", "5432", "-U", "celonis"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
   scheduler:
     <<: *redash-service
     command: dev_scheduler
@@ -59,6 +52,17 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+  postgres:
+    image: pgautoupgrade/pgautoupgrade:latest
+    ports:
+      - "15432:5432"
+    # The following turns the DB into less durable, but gains significant performance improvements for the tests run (x3
+    # improvement on my personal machine). We should consider moving this into a dedicated Docker Compose configuration for
+    # tests.
+    command: "postgres -c fsync=off -c full_page_writes=off -c synchronous_commit=OFF"
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
   email:
     image: maildev/maildev
     ports:
