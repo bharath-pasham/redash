@@ -14,7 +14,7 @@ x-redash-service: &redash-service
     - "localhost:host-gateway"
 x-redash-environment: &redash-environment
   REDASH_HOST: http://localhost:5001
-  REDASH_LOG_LEVEL: "INFO"
+  REDASH_LOG_LEVEL: "DEBUG"
   REDASH_REDIS_URL: "redis://redis:6379/0"
   REDASH_DATABASE_URL: "postgresql://celonis:celonis@host.docker.internal:5432/redash"
   REDASH_RATELIMIT_ENABLED: "false"
@@ -27,7 +27,7 @@ x-redash-environment: &redash-environment
 services:
   server:
     <<: *redash-service
-    command: dev_server
+    command: debug
     depends_on:
       - redis
     ports:
